@@ -256,4 +256,4 @@ project/
 
 ## Author
 
-FURI Backend API Project
+FURNI Backend API Project
