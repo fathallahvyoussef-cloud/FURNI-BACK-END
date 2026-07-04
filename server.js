@@ -4,16 +4,19 @@ const mongoose = require('mongoose'); // import module mongoose
 const User = require('./models/user');
 const Product = require('./models/product');
 const Cart = require('./models/cart');
+const Order = require('./models/order');
 const multer = require('multer');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const isAdmin = require('./middleware/isAdmin');
+require('dotenv').config();
 
 
-
-
-
-mongoose.connect('mongodb://127.0.0.1:27017/FURI');
+// mongoose.connect('mongodb://127.0.0.1:27017/FURI');
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("Connected to MongoDB Atlas"))
+  .catch((err) => console.error(" MongoDB connection error:", err));
 
 
 const app = express();
@@ -81,17 +84,20 @@ app.post('/admin/register',async (req, res) => {
 app.post('/users/inscri', async (req, res) => {
 
     try {
-        const { fullName, email, password } = req.body;
+        const { fullName, email, password,adress,phone } = req.body;
 
         // Simple validation
-        if (!fullName || !email || !password) {
+        if (!fullName || !email || !password || !adress || !phone) {
             return res.status(400).json({ message: 'All fields are required' });
         }
 
         // Check if user already exists
-        const existingUser = await User.findOne({ email });
+        const existingUser = await User.findOne({ $or: [
+    { email: email },
+    { phone: phone }
+  ] });
         if (existingUser) {
-            return res.status(400).json({ message: 'Email already exists' });
+            return res.status(400).json({ message: 'Email or phone already exists' });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -101,6 +107,8 @@ app.post('/users/inscri', async (req, res) => {
             fullName,
             email,
             password: hashedPassword,
+            adress: adress,
+            phone: phone,
             role : 'user'
         });
 
@@ -164,7 +172,7 @@ app.get('/users/:id', async (req, res) => {
 });
 
 // update user by ID
-app.patch('/users/edit/:id', async (req, res) => {
+app.patch('/users/edit/:id',isAdmin ,async (req, res) => {
     try {
 
         const { id } = req.params;
@@ -197,7 +205,7 @@ app.patch('/users/edit/:id', async (req, res) => {
 });
 
 //delete user
-app.delete('/users/delete/:id', async (req, res) => {
+app.delete('/users/delete/:id', isAdmin,async (req, res) => {
     try {
         const id = req.params.id;
         const deletedUser = await User.findByIdAndDelete(id);
@@ -212,7 +220,7 @@ app.delete('/users/delete/:id', async (req, res) => {
     }
 });
 
-// *** products ***
+                                            // *** products ***
 
 //create product
 app.post('/products/create', upload.single('image'), async (req, res) => {
@@ -240,7 +248,7 @@ app.post('/products/create', upload.single('image'), async (req, res) => {
 });
 
 //update product
-app.put('/products/edit/:id', upload.single('image'), async (req, res) => {
+app.put('/products/edit/:id', upload.single('image'), isAdmin,async (req, res) => {
     try {
 
         const { name, price, description, qte } = req.body;
@@ -250,7 +258,7 @@ app.put('/products/edit/:id', upload.single('image'), async (req, res) => {
             updateData.image = req.protocol + '://' + req.get('host') + '/uploads/' + req.file ? req.file.filename : '';
         }
 
-        const updatedProduct = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true });
+        const updatedProduct = await Product.findByIdAndUpdate(req.params.id, updateData, { returnDocument: 'after' });
 
         if (!updatedProduct) {
             return res.status(404).json({ message: 'Product not found' });
@@ -286,7 +294,7 @@ app.get('/products/:id', async (req, res) => {
 });
 
 //delete product
-app.delete('/products/delete/:id', async (req, res) => {
+app.delete('/products/delete/:id', isAdmin,async (req, res) => {
     try {
         const id = req.params.id;
         const deletedProduct = await Product.findByIdAndDelete(id);
@@ -302,7 +310,7 @@ app.delete('/products/delete/:id', async (req, res) => {
 });
 
 
-//**********   Carts */
+                                            //**********   Carts */
 
 
 app.post('/carts/add', async (req, res) => {
@@ -338,7 +346,7 @@ app.post('/carts/add', async (req, res) => {
 
             if (itemIndex > -1) {
                 // product exists
-
+                
                 cart.items[itemIndex].quantity += qte;
 
                 // update quantity in existing product
@@ -346,7 +354,7 @@ app.post('/carts/add', async (req, res) => {
 
             } else {
 
-                cart.items.push({ productId, qte: qte, price: price });
+                cart.items.push({ productId, quantity: qte, price: price });
             }
             await cart.save();
         } else {
@@ -354,7 +362,7 @@ app.post('/carts/add', async (req, res) => {
             // If no cart exists, create one
             cart = new Cart({
                 userId,
-                items: [{ productId, qte: qte, price: productExists.price }]
+                items: [{ productId, quantity: qte, price: productExists.price }]
             });
             await cart.save();
 
@@ -378,7 +386,7 @@ app.get('/carts', async (req, res) => {
     try {
 
         const carts = await Cart.find()
-            .populate('userId', 'fullName email')
+            .populate('userId', 'fullName email adress phone')
             .populate('items.productId', 'name price qte image');
         res.status(200).json(carts);
     } catch (error) {
@@ -431,6 +439,7 @@ app.put('/carts/update-quantity', async (req, res) => {
             // add to cart remove from product
             product.qte -= newQuantity
             cart.items[itemIndex].quantity += newQuantity;
+            console.log(cart.items[itemIndex].quantity)
         }
         else if (newQuantity < 0) {
             // remove from cart add to product
@@ -450,6 +459,163 @@ app.put('/carts/update-quantity', async (req, res) => {
 
         await cart.save();
         res.status(200).json({ message: 'Cart updated successfully', cart });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+//delete cart item
+app.delete('/carts/remove-item/:data1/:data2', async (req, res) => {
+    try {        
+        
+        const productId = req.params.data1.split(':')[1]
+        const userId = req.params.data2.split(':')[1]
+   
+        
+
+
+        if (!userId || !productId) {
+            return res.status(400).json({ message: 'Missing userId or productId' });
+        }
+
+        const cart = await Cart.findOne({ userId });
+        if (!cart) {
+            return res.status(404).json({ message: 'Cart not found' });
+        }
+
+
+        const itemIndex = cart.items.findIndex(item => item.productId.toString() === productId);
+        if (itemIndex === -1) {
+                            
+            return res.status(404).json({ message: 'Product not found in cart' });
+        }
+
+        const item = cart.items[itemIndex];
+        
+        const quantityToReturn = item.quantity
+        
+
+        // Restore product stock before removing from cart
+        await Product.findByIdAndUpdate(productId, { $inc: { qte: quantityToReturn } });
+
+        // Remove item from cart
+        cart.items.splice(itemIndex, 1);
+        await cart.save();
+
+        res.status(200).json({ message: 'Item removed from cart successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'error has occured' });
+    }
+});
+
+                                            // orders
+
+// add order
+app.post('/orders/create', async (req, res) => {
+    try {
+        
+        const { userId, items, total, adress, phone, date,status } = req.body;
+
+        if (  !userId || !items || !total || !adress || !phone || !date || !status ) {
+            return res.status(400).json({ message: 'Missing required fields' });
+        }
+
+        // Find the user's cart
+        const cart = await Cart.findOne({ userId });
+        if (!cart || cart.items.length === 0) {
+            return res.status(400).json({ message: 'Cart is empty' });
+        }
+
+
+        // Create the new order
+        const newOrder = new Order({
+            userId : userId,
+            items: items,
+            total : total,
+            date : date,
+            adress : adress,
+            phone : phone,
+            status: status
+        });
+
+        await newOrder.save();
+
+        // Delete the cart after the order is successfully placed
+        await Cart.findOneAndDelete({ userId });
+
+        res.status(201).json({ message: 'Order created successfully' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+                                            // get all orders
+app.get('/orders', async (req, res) => {
+    try {
+        const orders = await Order.find()
+            .populate('userId', 'fullName adress')
+            .populate('items.productId', 'name price image');
+        res.status(200).json(orders);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+//cancel order
+app.patch('/orders/cancel/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const order = await Order.findById(id);
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        if (order.status === 'cancelled') {
+            return res.status(400).json({ message: 'Order is already cancelled' });
+        }
+
+        // Restore product quantities for each item in the order
+        const restorationPromises = order.items.map(item =>
+            Product.findByIdAndUpdate(item.productId, { $inc: { qte: item.quantity } })
+        );
+        await Promise.all(restorationPromises);
+
+        // Update order status
+        order.status = 'cancelled';
+        await order.save();
+
+        res.status(200).json({ message: 'Order cancelled successfully', order });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+
+app.patch('/orders/delivered/:id', async (req, res) => {
+    try {
+
+
+        const { id } = req.params;
+        
+        const order = await Order.findById(id);
+
+        
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        if (order.status === 'delivered') {
+            return res.status(400).json({ message: 'Order is already delivered' });
+        }
+
+        
+        // Update order status
+        order.status = 'delivered';
+        await order.save();
+
+        res.status(200).json({ message: 'Order delivered successfully', order });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
