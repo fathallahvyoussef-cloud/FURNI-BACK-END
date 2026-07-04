@@ -10,6 +10,7 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const isAdmin = require('./middleware/isAdmin');
+const PORT = process.env.PORT || 5000;
 require('dotenv').config();
 
 
@@ -623,7 +624,7 @@ app.patch('/orders/delivered/:id', async (req, res) => {
 
 
 
-const PORT = 3000;
-app.listen(PORT, () => {
+// const PORT = 3000;
+app.listen(PORT, "0.0.0.0",() => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
