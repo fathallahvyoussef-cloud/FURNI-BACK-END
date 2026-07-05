@@ -139,16 +139,22 @@ app.post('/login', async (req, res) => {
             return res.status(401).json({ message: 'Email or password incorrect' });
         }
 
-        console.log("Server UTC time:", new Date().toISOString());
+
+        const serverNow = Math.floor(Date.now() / 1000);
+
         // Generate JWT (Use a strong secret key in production)
         const token = jwt.sign({ id: user._id, fullName: user.fullName, role: user.role},'MY_SECRET_KEY', { expiresIn: '2h' });
 
+
+        const decoded = jwt.decode(token);
+
+        
         res.status(200).json({ token,
-debug: {
-      serverNow: now,
+
+      serverNow,
       iat: decoded.iat,
       exp: decoded.exp
-    }
+    
 
          });
     } catch (error) {
