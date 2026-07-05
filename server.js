@@ -143,7 +143,14 @@ app.post('/login', async (req, res) => {
         // Generate JWT (Use a strong secret key in production)
         const token = jwt.sign({ id: user._id, fullName: user.fullName, role: user.role},'MY_SECRET_KEY', { expiresIn: '2h' });
 
-        res.status(200).json({ token });
+        res.status(200).json({ token,
+debug: {
+      serverNow: now,
+      iat: decoded.iat,
+      exp: decoded.exp
+    }
+
+         });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
