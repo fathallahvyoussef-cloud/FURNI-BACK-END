@@ -141,7 +141,7 @@ app.post('/login', async (req, res) => {
 
         console.log("Server UTC time:", new Date().toISOString());
         // Generate JWT (Use a strong secret key in production)
-        const token = jwt.sign({ id: user._id, fullName: user.fullName, role: user.role}, process.env.JWT_SECRET, { expiresIn: '2h' });
+        const token = jwt.sign({ id: user._id, fullName: user.fullName, role: user.role},'MY_SECRET_KEY', { expiresIn: '2h' });
 
         res.status(200).json({ token });
     } catch (error) {
