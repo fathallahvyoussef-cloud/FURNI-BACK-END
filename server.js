@@ -139,8 +139,9 @@ app.post('/login', async (req, res) => {
             return res.status(401).json({ message: 'Email or password incorrect' });
         }
 
+        console.log("Server UTC time:", new Date().toISOString());
         // Generate JWT (Use a strong secret key in production)
-        const token = jwt.sign({ id: user._id, fullName: user.fullName, role: user.role}, 'MY_SECRET_KEY', { expiresIn: '2h' });
+        const token = jwt.sign({ id: user._id, fullName: user.fullName, role: user.role}, process.env.JWT_SECRET, { expiresIn: '2h' });
 
         res.status(200).json({ token });
     } catch (error) {
