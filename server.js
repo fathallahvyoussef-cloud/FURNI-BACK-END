@@ -148,12 +148,13 @@ app.post('/login', async (req, res) => {
 
         const decoded = jwt.decode(token);
 
-        
+
         res.status(200).json({ token,
 
-      serverNow,
-      iat: decoded.iat,
-      exp: decoded.exp
+      serverNowIso: serverNow.toISOString(),
+    serverNowEpoch: Math.floor(serverNow.getTime() / 1000),
+    iat: decoded.iat,
+    exp: decoded.exp
     
 
          });
