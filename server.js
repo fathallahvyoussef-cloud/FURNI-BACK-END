@@ -140,7 +140,6 @@ app.post('/login', async (req, res) => {
         }
 
 
-        const serverNow = Math.floor(Date.now() / 1000);
 
         // Generate JWT (Use a strong secret key in production)
         const token = jwt.sign({ id: user._id, fullName: user.fullName, role: user.role},'MY_SECRET_KEY', { expiresIn: '2h' });
@@ -152,7 +151,7 @@ app.post('/login', async (req, res) => {
 
         res.status(200).json({ token,
 
-      serverNowIso : serverNow.toISOString(),
+      serverNow :  serverNow.toISOString(),
     serverNowEpoch : Math.floor(serverNow.getTime() / 1000),
     iat : decoded.iat,
     exp : decoded.exp
