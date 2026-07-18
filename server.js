@@ -70,13 +70,16 @@ app.post('/admin/register',async (req, res) => {
             fullName,
             email,
             password: hashedPassword,
+            adress : "Tunis gammarth",
+            phone : "+21654060096",
             role: 'admin' 
         });
 
         await newAdmin.save();
         res.status(201).json({ message: 'Admin created successfully' });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        
+        res.status(500).json({ message: error.message, body : newAdmin });
     }
 });
 
@@ -241,7 +244,7 @@ app.delete('/users/delete/:id', isAdmin,async (req, res) => {
 //create product
 app.post('/products/create', upload.single('image'), async (req, res) => {
     try {
-
+            
         const { name, price, description, qte } = req.body;
         const image = req.protocol + '://' + req.get('host') + '/uploads/' + req.file ? req.file.filename : '';
 
