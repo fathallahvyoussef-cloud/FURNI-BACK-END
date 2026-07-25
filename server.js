@@ -11,6 +11,8 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const isAdmin = require('./middleware/isAdmin');
 const PORT = process.env.PORT || 5000;
+const cloudinary = require('./config/cloudinary');
+const fs = require('fs-extra');
 require('dotenv').config();
 
 
@@ -246,7 +248,19 @@ app.post('/products/create', upload.single('image'), async (req, res) => {
     try {
             
         const { name, price, description, qte } = req.body;
-        const image = req.protocol + '://' + req.get('host') + '/uploads/' + req.file ? req.file.filename : '';
+        // const image = req.protocol + '://' + req.get('host') + '/uploads/' + req.file ? req.file.filename : '';
+
+
+        if (req.file) {
+            const result = await cloudinary.uploader.upload(req.file.path, {
+                folder: "products"
+            });
+
+            image = result.secure_url;
+
+             // Delete the temporary local file
+            await fs.remove(req.file.path);
+        }
 
 
         const newProduct = new Product({
