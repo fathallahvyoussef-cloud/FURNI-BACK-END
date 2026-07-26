@@ -16,7 +16,7 @@ const fs = require('fs-extra');
 
 
 const dns = require("node:dns");
-dns.setDefaultResultOrder("ipv4first");
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 require('dotenv').config();
 
