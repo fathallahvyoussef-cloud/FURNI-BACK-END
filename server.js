@@ -13,6 +13,11 @@ const isAdmin = require('./middleware/isAdmin');
 const PORT = process.env.PORT || 5000;
 const cloudinary = require('./config/cloudinary');
 const fs = require('fs-extra');
+
+
+const dns = require("node:dns");
+dns.setDefaultResultOrder("ipv4first");
+
 require('dotenv').config();
 
 
