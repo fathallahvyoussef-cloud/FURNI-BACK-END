@@ -13,12 +13,18 @@ const isAdmin = require('./middleware/isAdmin');
 const PORT = process.env.PORT || 5000;
 const cloudinary = require('./config/cloudinary');
 const fs = require('fs-extra');
+const WebSocket = require('ws');
+const http = require('http');
+const { Server } = require('socket.io');
+
+
 
 
 const dns = require("node:dns");
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 require('dotenv').config();
+
 
 
 // mongoose.connect('mongodb://127.0.0.1:27017/FURI');
@@ -31,6 +37,34 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+
+// WebSocket server setup
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    // origin: 'http://localhost:4200',
+    origin: 'https://furni-demo.vercel.app',
+    methods: ['GET', 'POST']
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+
+  // Client asks to track a specific order
+  socket.on('trackOrder', (orderId) => {
+    socket.join(`order_${orderId}`);
+    console.log(`Socket ${socket.id} joined order_${orderId}`);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+
+app.set('io', io);
 
 
 
@@ -629,8 +663,8 @@ app.patch('/orders/cancel/:id', async (req, res) => {
     }
 });
 
-
-app.patch('/orders/delivered/:id', async (req, res) => {
+// patch order
+app.patch('/orders/update/:id', async (req, res) => {
     try {
 
 
@@ -650,10 +684,30 @@ app.patch('/orders/delivered/:id', async (req, res) => {
 
         
         // Update order status
-        order.status = 'delivered';
+        order.status = req.body.status;
         await order.save();
 
-        res.status(200).json({ message: 'Order delivered successfully', order });
+         const io = req.app.get('io');
+        io.to(`order_${order._id}`).emit('orderStatusUpdate', order)
+
+        res.status(200).json({ message: 'Order status updated successfully', order });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// get order by id
+app.get('/orders/:id', async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.id)
+            .populate('userId', 'fullName adress')
+            .populate('items.productId', 'name price image');
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        res.status(200).json(order);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -661,7 +715,15 @@ app.patch('/orders/delivered/:id', async (req, res) => {
 
 
 
-// const PORT = 3000;
-app.listen(PORT, "0.0.0.0",() => {
+
+// app.listen(PORT, "0.0.0.0",() => {
+//     console.log(`Server running on http://localhost:${PORT}`);
+// });
+
+
+server.listen(PORT, "0.0.0.0",() => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
+
+
+
