@@ -45,7 +45,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     // origin: 'http://localhost:4200',
-    origin: 'https://furni-demo.vercel.app',
+    origin: 'https://furni-front-end.vercel.app/',
     methods: ['GET', 'POST']
   }
 });
