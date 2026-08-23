@@ -632,7 +632,7 @@ app.post('/orders/create', async (req, res) => {
         // Delete the cart after the order is successfully placed
         await Cart.findOneAndDelete({ userId });
 
-        res.status(201).json({ message: 'Order created successfully' , orderId : '123' });
+        res.status(201).json({ message: 'Order created successfully' , orderId : newOrder._id });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
