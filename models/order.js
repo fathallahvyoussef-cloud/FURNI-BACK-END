@@ -58,7 +58,17 @@ status : {
     type : String,
     required : true,
     default : 'pending'
-}
+},
+paymentStatus : {
+    type : String,
+    required : true,
+    default : 'pending'
+    
+  },
+
+   stripePaymentIntentId: {
+      type: String
+    }
  
 });
 
