@@ -25,6 +25,8 @@ dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 require('dotenv').config();
 const paymentsRouter = require('./routes/payments');
+const chatRoute = require("./routes/chat.route");
+
 
 
 
@@ -36,7 +38,7 @@ mongoose.connect(process.env.MONGO_URI)
 
 
 const app = express();
-app.use(cors());
+app.use(cors({ exposedHeaders: ['X-Session-Id'] }));
 
 
 
@@ -735,6 +737,9 @@ app.get('/orders/:id', async (req, res) => {
 
 app.use('/payments', paymentsRouter);
 
+//                  chat    
+app.use(chatRoute);
+//                  test stream
 
 
 
