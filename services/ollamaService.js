@@ -145,7 +145,8 @@ async function runAgentTurnStreaming(conversation, session, emit) {
     const data = await response.json();
     console.log(`[ollama] round ${round + 1} response data :`, data);
     const content = stripThinkBlock(data.message?.content || "");
-    const toolCalls = data.message?.tool_calls || [];
+    // const toolCalls = data.message?.tool_calls || [];  //  LOCAL OLLAMA SHAPE
+    const toolCalls = data.choices?.[0]?.message?.tool_calls // HF SHAPE
 
     const elapsedSeconds = ((Date.now() - roundStartedAt) / 1000).toFixed(1);
     console.log(`[ollama] round ${round + 1} finished in ${elapsedSeconds}s — ${toolCalls.length} tool call(s), ${content.length} chars of text`);
