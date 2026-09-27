@@ -4,7 +4,10 @@ const ollamaTools = require("../config/ollamaTools");
 const { executeTool } = require("./tooHandllers");
 
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
-const MODEL = process.env.OLLAMA_MODEL || "qwen3";
+const MODEL = process.env.USE_HF === "true" ? process.env.OLLAMA_MODEL : "qwen2.5:7b";
+const HF_BASE_URL = "https://router.huggingface.co/v1";
+
+
 
 const SYSTEM_PROMPT = `You are a shopping assistant for a furniture store (chairs, sofas, tables, and similar home furniture).
 
@@ -72,33 +75,56 @@ async function runAgentTurnStreaming(conversation, session, emit) {
 
     let response;
     try {
-      response = await fetch(`${OLLAMA_URL}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: MODEL,
-          messages,
-          tools: ollamaTools,
-          // NON-streaming from Ollama, by design. There's a documented Ollama
-          // bug where streaming + tool-calling together breaks the
-          // separation between the model's reasoning ("thinking") and its
-          // real answer — reasoning leaks straight into `message.content`
-          // as plain text. The exact same model, called WITHOUT streaming,
-          // correctly separates `message.thinking` from `message.content`
-          // and `message.tool_calls`. Local Ollama generation is already
-          // slow enough that losing live token-by-token display costs us
-          // little, and it buys real correctness. We still stream the
-          // *result* on to the browser (see below) — just not token-by-token
-          // from Ollama's side.
-          stream: false,
-          think: false,
-          keep_alive: "30m",
-          options: {
-            num_predict: 400
-          }
-        })
-      });
-    } catch (err) {
+      if (process.env.USE_HF == "true") {
+        console.log(`[ollama] using HF router for Ollama model ${MODEL}`);
+        response = await fetch(`${HF_BASE_URL}/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.OLLAMA_API_KEY}` },
+          body: JSON.stringify({
+            model: MODEL,
+            messages,
+            tools: ollamaTools,
+            // NON-streaming from Ollama, by design. There's a documented Ollama
+            // bug where streaming + tool-calling together breaks the
+            // separation between the model's reasoning ("thinking") and its
+            // real answer — reasoning leaks straight into `message.content`
+            // as plain text. The exact same model, called WITHOUT streaming,
+            // correctly separates `message.thinking` from `message.content`
+            // and `message.tool_calls`. Local Ollama generation is already
+            // slow enough that losing live token-by-token display costs us
+            // little, and it buys real correctness. We still stream the
+            // *result* on to the browser (see below) — just not token-by-token
+            // from Ollama's side.
+            stream: false,
+            think: false,
+            keep_alive: "30m",
+            options: {
+              num_predict: 400
+            }
+          })
+        });
+      }
+      else {
+        console.log(`[ollama] using local Ollama server for model ${MODEL}`);
+         response = await fetch(`${OLLAMA_URL}/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: MODEL,
+            messages,
+            tools: ollamaTools,
+            stream: false,
+            think: false,
+            keep_alive: "30m",
+            options: { num_predict: 400 }
+          })
+        });
+        if (!response.ok) throw new Error(`Ollama error ${response.status}: ${await response.text()}`);
+        const data = await res.json();
+        return { content: data.message.content, tool_calls: data.message.tool_calls };
+      }
+    }
+    catch (err) {
       console.error("[ollama] fetch failed — is `ollama serve` running?", err.message);
       emit({
         type: "error",
