@@ -79,7 +79,7 @@ async function runAgentTurnStreaming(conversation, session, emit) {
     try {
       if (process.env.USE_HF == "true") {
         console.log(`[ollama] using HF router for Ollama model ${MODEL}`);
-        response = await fetch(`${HF_BASE_URL}/api/chat`, {
+        response = await fetch(`${HF_BASE_URL}/chat/completions`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.OLLAMA_API_KEY}` },
           body: JSON.stringify({
@@ -122,7 +122,7 @@ async function runAgentTurnStreaming(conversation, session, emit) {
           })
         });
         if (!response.ok) throw new Error(`Ollama error ${response.status}: ${await response.text()}`);
-        const data = await res.json();
+        const data = await response.json();
         return { content: data.message.content, tool_calls: data.message.tool_calls };
       }
     }
