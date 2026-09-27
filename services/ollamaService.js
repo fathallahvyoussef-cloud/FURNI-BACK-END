@@ -143,6 +143,7 @@ async function runAgentTurnStreaming(conversation, session, emit) {
     }
 
     const data = await response.json();
+    console.log("[debug] full message object:", JSON.stringify(data.choices?.[0]?.message, null, 2));
     console.log(`[ollama] round ${round + 1} response data :`, data);
     const content = stripThinkBlock(data.message?.content || "");
     // const toolCalls = data.message?.tool_calls || [];  //  LOCAL OLLAMA SHAPE
