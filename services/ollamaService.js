@@ -4,8 +4,10 @@ const ollamaTools = require("../config/ollamaTools");
 const { executeTool } = require("./tooHandllers");
 
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
-const MODEL = process.env.USE_HF === "true" ? process.env.OLLAMA_MODEL : "qwen2.5:7b";
-const HF_BASE_URL = "https://router.huggingface.co/v1";
+const MODEL = process.env.USE_HF === "true"
+  ? "Qwen/Qwen2.5-7B-Instruct"
+  : (process.env.OLLAMA_MODEL || "qwen2.5:7b");
+  const HF_BASE_URL = "https://router.huggingface.co/v1";
 
 
 
